@@ -488,16 +488,15 @@ const ORION_TX = () => {
     initializeMode(selectedMode);
   };
 
-  /* ============================================================
- /* ============================================================
-     Core Animation Loop (requestAnimationFrame)
-     - Continuous COA Exploration
-     - Replaces setInterval for smoother motion
-     - Calculates FPS in real time
+/* ============================================================
+   Core Animation Loop (Stable Continuous Version)
+   - Continuous COA Exploration (thousands+)
+   - Auto-pauses after COA_LIMIT
   ============================================================ */
 useEffect(() => {
   if (!isRunning) return;
 
+  const COA_LIMIT = 20000; // Stop automatically after this many COAs
   let frameCount = 0;
   let fpsTimer = performance.now();
   lastFrameTime.current = performance.now();
@@ -511,7 +510,7 @@ useEffect(() => {
     setTimeElapsed((t) => t + timeStep);
     setStrategyTimer((st) => st + timeStep);
 
-    // Continuous COA exploration every frame
+    // Continuous COA exploration
     evaluateCurrentStrategy(
       strategies[Math.floor(Math.random() * strategies.length)].approach,
       strategies,
@@ -523,17 +522,20 @@ useEffect(() => {
       timeElapsed
     );
 
-    // update simulation
-    if (mode === "multi-theater") {
-      updateMultiTheater();
-    } else {
-      updateStandardMode();
+    // stop automatically at COA_LIMIT
+    if (exploredCOAs >= COA_LIMIT) {
+      console.log(`✅ Stopped after ${COA_LIMIT} COAs`);
+      setIsRunning(false);
+      return;
     }
 
-    // update mission metrics
+    // update simulation and metrics
+    if (mode === "multi-theater") updateMultiTheater();
+    else updateStandardMode();
+
     updateMissionMetrics();
 
-    // FPS counter update
+    // FPS calculation
     frameCount++;
     const elapsed = now - fpsTimer;
     if (elapsed > 1000) {
@@ -542,7 +544,6 @@ useEffect(() => {
       fpsTimer = now;
     }
 
-    // keep running if active
     if (isRunning) requestAnimationFrame(animate);
   };
 
@@ -551,16 +552,7 @@ useEffect(() => {
   return () => {
     lastFrameTime.current = performance.now();
   };
-}, [
-  isRunning,
-  speed,
-  mode,
-  strategies,
-  theaters,
-  agents,
-  policy,
-  logistics,
-]);
+}, [isRunning]);
 
   /* ============================================================
      Mission Metrics Update Logic
